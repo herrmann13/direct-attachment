@@ -51,7 +51,13 @@
 
         // Binary frame: the file bytes, following a metadata frame.
         if (meta && onReceive) {
-          onReceive(meta, new Uint8Array(event.data));
+          // Copy into a fresh same-realm Uint8Array. In Firefox the WebSocket's
+          // ArrayBuffer is a cross-realm (Xray-wrapped) object; calling methods
+          // such as subarray() on it throws "Permission denied to access
+          // property 'constructor'".
+          const view = new Uint8Array(event.data);
+          const bytes = new Uint8Array(view);
+          onReceive(meta, bytes);
           meta = null;
         }
       };

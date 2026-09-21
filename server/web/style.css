@@ -115,7 +115,9 @@ button:disabled {
   width: 100%;
   border-radius: 10px;
   background: #000;
-  aspect-ratio: 4 / 3;
+  height: 60vh;
+  max-height: 480px;
+  min-height: 280px;
   object-fit: cover;
 }
 

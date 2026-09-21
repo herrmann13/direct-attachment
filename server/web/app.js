@@ -164,10 +164,13 @@
       );
 
       if (res.ok) {
-        setStatus("Enviado! Você já pode voltar ao computador.", "success");
-        reset();
-        actions.classList.add("hidden");
+        selectedFile = null;
+        if (previewImg.src) URL.revokeObjectURL(previewImg.src);
+        previewImg.removeAttribute("src");
+        preview.classList.add("hidden");
         sendBtn.classList.add("hidden");
+        actions.classList.add("hidden");
+        setStatus("Enviado! Você já pode voltar ao computador.", "success");
         return;
       }
 
