@@ -78,7 +78,7 @@ Edite `extension/content/config.js` e aponte `backendOrigin` para o seu backend:
 
 ```js
 DirectAttachment.config = {
-  backendOrigin: "https://direct-attachment.up.railway.app",
+  backendOrigin:"direct-attachment-production.up.railway.app",
 };
 ```
 
