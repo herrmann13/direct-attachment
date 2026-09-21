@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Anexar pelo celular</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <main class="card">
+    <h1>Anexar pelo celular</h1>
+    <p class="subtitle">Tire uma foto ou escolha uma da galeria.</p>
+
+    <div id="preview" class="preview hidden">
+      <img id="preview-img" alt="Pré-visualização" />
+      <button id="reset" class="ghost" type="button">Escolher outra</button>
+    </div>
+
+    <div id="actions" class="actions">
+      <button id="camera" class="primary" type="button">Tirar foto</button>
+      <button id="gallery" class="secondary" type="button">Escolher da galeria</button>
+      <input id="file" type="file" accept="image/jpeg,image/png,image/webp" hidden />
+    </div>
+
+    <div id="camera-panel" class="camera hidden">
+      <video id="video" playsinline autoplay muted></video>
+      <div class="camera-actions">
+        <button id="capture" class="primary" type="button">Capturar</button>
+        <button id="cancel-camera" class="ghost" type="button">Cancelar</button>
+      </div>
+    </div>
+
+    <button id="send" class="primary send hidden" type="button">Enviar</button>
+
+    <p id="status" class="status" role="status"></p>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

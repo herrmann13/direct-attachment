@@ -1,0 +1,14 @@
+# Go build artifacts
+server/server
+*.exe
+*.test
+*.out
+server/vendor/
+
+# OS / editor
+.DS_Store
+Thumbs.db
+
+# Env / secrets
+.env
+.env.*
