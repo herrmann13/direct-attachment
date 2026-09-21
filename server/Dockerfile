@@ -3,11 +3,12 @@ FROM golang:1.22-alpine AS build
 
 WORKDIR /src
 
-# Cache dependencies before copying sources.
-COPY go.mod go.sum ./
+# Cache dependencies before copying sources. The build context is the
+# repository root, so paths are prefixed with server/.
+COPY server/go.mod server/go.sum ./
 RUN go mod download
 
-COPY . .
+COPY server/ .
 RUN CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-s -w" -o /out/server ./cmd/server
 
 # ---- Runtime stage -------------------------------------------------------
