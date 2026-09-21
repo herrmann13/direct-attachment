@@ -73,30 +73,25 @@
   }
 
   DirectAttachment.injector = {
-    // Chrome-only seamless injection.
-    inject(input, bytes, meta) {
-      injectNative(input, makeFile(bytes, meta));
+    // Re-validates decrypted bytes and returns the detected MIME type, or null
+    // when the payload is not a supported image.
+    detectType(bytes) {
+      return detectImageType(bytes);
     },
 
-    // Cross-browser delivery. Returns the outcome so the caller can decide
-    // whether to close the overlay or offer a download. The decrypted bytes are
-    // re-validated as an image before anything is delivered to the page.
-    deliver(input, bytes, meta) {
-      const detected = detectImageType(bytes);
-      if (!detected) {
-        return { mode: "invalid" };
-      }
+    // Builds a File from decrypted bytes and metadata (name, contentType).
+    makeFile(bytes, meta) {
+      return makeFile(bytes, meta);
+    },
 
-      // Prefer the detected type over the phone-declared one for safety.
-      const file = makeFile(bytes, { name: meta.name, contentType: detected });
-
-      if (!DirectAttachment.browser.isFirefox) {
+    // Delivers a File to the page: injects into the input on Chrome, or fires a
+    // synthetic drop on Firefox.
+    attach(input, file) {
+      if (DirectAttachment.browser.isFirefox) {
+        tryDrop(input, file);
+      } else {
         injectNative(input, file);
-        return { mode: "injected" };
       }
-
-      tryDrop(input, file);
-      return { mode: "firefox", file };
     },
   };
 })();

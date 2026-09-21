@@ -28,6 +28,20 @@
     return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
+  // Cleans a user-entered file name: trims, strips path separators, falls back
+  // to the default when empty, and re-attaches the original extension if the
+  // user removed it.
+  function sanitizeName(input, fallback) {
+    let name = String(input || "").trim().replace(/[/\\]/g, "");
+    if (!name) return fallback;
+
+    const extMatch = /(\.[A-Za-z0-9]{1,10})$/.exec(fallback);
+    if (extMatch && !/\.[A-Za-z0-9]{1,10}$/.test(name)) {
+      name += extMatch[1];
+    }
+    return name;
+  }
+
   class Overlay {
     constructor() {
       this.host = null;
@@ -108,33 +122,44 @@
       this.statusEl.className = "da-status" + (kind ? " da-" + kind : "");
     }
 
-    // Firefox-only result state: shows a download button because the file
-    // cannot be injected automatically.
-    renderReceived(file) {
+    // Received-file state: lets the user rename the file (pre-filled with the
+    // default name) before attaching or downloading it.
+    renderReceived(file, handlers) {
       if (!this.shadow) return;
 
       const card = this.shadow.querySelector(".da-card");
       if (!card) return;
 
+      const isFirefox = DirectAttachment.browser.isFirefox;
+
       card.innerHTML = `
         <h2>Foto recebida</h2>
-        <p class="da-sub">${escapeHTML(file.name)} (${formatSize(file.size)})</p>
-        <p class="da-status">
-          O Firefox não permite anexar automaticamente ao campo da página.
-          Baixe o arquivo abaixo e selecione-o manualmente.
-        </p>
+        <p class="da-sub">${formatSize(file.size)}</p>
+        <label class="da-label" for="da-name">Nome do arquivo</label>
+        <input class="da-input" id="da-name" type="text" value="${escapeHTML(file.name)}" />
         <div class="da-actions">
-          <button class="da-btn da-btn-primary" id="da-download" type="button">Baixar arquivo</button>
-          <button class="da-btn" id="da-close" type="button">Fechar</button>
+          <button class="da-btn ${isFirefox ? "" : "da-btn-primary"}" id="da-attach" type="button">Anexar</button>
+          <button class="da-btn ${isFirefox ? "da-btn-primary" : ""}" id="da-download" type="button">Baixar</button>
         </div>
+        <button class="da-btn da-btn-ghost da-close-btn" id="da-close" type="button">Fechar</button>
       `;
 
+      const nameInput = card.querySelector("#da-name");
+      const defaultName = file.name;
+
+      const finalName = () => sanitizeName(nameInput.value, defaultName);
+
+      card.querySelector("#da-attach").addEventListener("click", () => {
+        if (handlers.onAttach) handlers.onAttach(finalName());
+      });
       card.querySelector("#da-download").addEventListener("click", () => {
-        DirectAttachment.browser.downloadBlob(file, file.name);
+        if (handlers.onDownload) handlers.onDownload(finalName());
       });
       card.querySelector("#da-close").addEventListener("click", () => {
-        if (this.onCancel) this.onCancel();
+        if (handlers.onClose) handlers.onClose();
       });
+
+      nameInput.select();
     }
 
     close() {

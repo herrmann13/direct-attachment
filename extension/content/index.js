@@ -54,37 +54,45 @@
                 return;
               }
 
-              const target = currentInput;
-
-              if (target) {
-                try {
-                  const result = DirectAttachment.injector.deliver(target, plain, meta);
-
-                  if (result.mode === "invalid") {
-                    DirectAttachment.transfer.cancel();
-                    DirectAttachment.overlay.setState(
-                      "O arquivo recebido não é uma imagem válida.",
-                      "error",
-                    );
-                    return;
-                  }
-
-                  DirectAttachment.transfer.cancel();
-
-                  if (result.mode === "firefox") {
-                    // Firefox can't auto-attach; keep the overlay open so the
-                    // user can download the file or close it.
-                    DirectAttachment.overlay.renderReceived(result.file);
-                    return;
-                  }
-                } catch (err) {
-                  // Injection failed; fall through to a clean close.
-                }
+              const detected = DirectAttachment.injector.detectType(plain);
+              if (!detected) {
+                DirectAttachment.transfer.cancel();
+                DirectAttachment.overlay.setState(
+                  "O arquivo recebido não é uma imagem válida.",
+                  "error",
+                );
+                return;
               }
 
+              const file = DirectAttachment.injector.makeFile(plain, {
+                name: meta.name,
+                contentType: detected,
+              });
               DirectAttachment.transfer.cancel();
-              DirectAttachment.overlay.close();
-              reset();
+
+              DirectAttachment.overlay.renderReceived(file, {
+                onAttach(name) {
+                  const target = currentInput;
+                  if (target) {
+                    const toAttach = DirectAttachment.injector.makeFile(plain, {
+                      name,
+                      contentType: detected,
+                    });
+                    DirectAttachment.injector.attach(target, toAttach);
+                  }
+                  DirectAttachment.overlay.close();
+                  reset();
+                },
+                onDownload(name) {
+                  DirectAttachment.browser.downloadBlob(file, name);
+                  DirectAttachment.overlay.close();
+                  reset();
+                },
+                onClose() {
+                  DirectAttachment.overlay.close();
+                  reset();
+                },
+              });
             },
             (message) => {
               DirectAttachment.overlay.setState(message, "error");
