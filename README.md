@@ -1,11 +1,17 @@
 # Direct Attachment
 
-Anexe fotos do seu celular a qualquer site pelo Chrome usando um QR Code —
-sem instalar nada no celular.
+Anexe fotos do seu celular a qualquer site pelo Chrome ou Firefox usando um
+QR Code — sem instalar nada no celular.
 
 Quando você clica em "Anexar arquivo" em um site, a extensão intercepta o clique,
 mostra um QR Code. Você escaneia com o celular, tira/usa uma foto, e o arquivo
 aparece no `<input type="file">` como se tivesse sido selecionado normalmente.
+
+> **Compatibilidade:** a mesma extensão funciona em Chrome e Firefox (MV3). A
+> diferença está no último passo: o **Chrome** injeta o arquivo no input
+> automaticamente; o **Firefox** não permite isso (o `input.files` é somente
+> leitura), então nele o arquivo é entregue por *drop* sintético e, se
+> necessário, por download manual. Veja [Suporte a navegadores](#suporte-a-navegadores).
 
 ## Arquitetura
 
@@ -20,8 +26,8 @@ Site (PC)  ──clique interceptado──▶  Extensão (content script)
 
 - **`server/`** — Backend Go. Cria sessões de pareamento, serve a página do
   celular e faz o *relay* do arquivo via WebSocket.
-- **`extension/`** — Extensão Chrome MV3. Intercepta o clique, mostra o QR e
-  injeta o arquivo recebido no input original.
+- **`extension/`** — Extensão WebExtension MV3 (Chrome e Firefox). Intercepta o
+  clique, mostra o QR e injeta o arquivo recebido no input original.
 - A foto **passa pelo servidor** (relay), o que é simples e confiável.
 
 ## Backend (Go)
@@ -62,7 +68,7 @@ go test ./...
 > o servidor deriva a URL da própria requisição, então normalmente funciona
 > sem configuração extra atrás do proxy do Railway.
 
-## Extensão (Chrome)
+## Extensão (Chrome e Firefox)
 
 ### 1. Configurar o backend
 
@@ -77,23 +83,88 @@ DirectAttachment.config = {
 Para desenvolvimento local, use `http://localhost:8080` (o Chrome trata
 `localhost` como contexto seguro).
 
-### 2. Carregar a extensão
+### 2. Definir o ID do Firefox
+
+Edite `extension/manifest.json` e troque o `id` em `browser_specific_settings`
+por um identificador seu (ex.: `direct-attachment@seudominio.com`). Esse ID é
+permanente na AMO e é usado pelo `update.json`.
+
+### 3. Carregar a extensão (desenvolvimento)
+
+**Chrome**
 
 1. Abra `chrome://extensions`.
 2. Ative o **Modo do desenvolvedor**.
 3. Clique em **Carregar sem compactação** e selecione a pasta `extension/`.
 
-### 3. Usar
+**Firefox**
+
+1. Abra `about:debugging#/runtime/this-firefox`.
+2. Clique em **Carregar complemento temporário**.
+3. Selecione o `manifest.json` dentro de `extension/`.
+
+### 4. Usar
 
 1. Em qualquer site, clique no botão de anexar arquivo.
 2. No overlay, escaneie o QR Code com o celular.
 3. Tire uma foto ou escolha uma da galeria.
-4. O arquivo aparece no input como se tivesse sido selecionado normalmente.
+4. O arquivo aparece no input como se tivesse sido selecionado normalmente
+   (Chrome) ou é entregue via drop/download (Firefox).
+
+## Suporte a navegadores
+
+| Navegador | Anexar automaticamente no input | Comportamento |
+|-----------|---------------------------------|---------------|
+| Chrome    | ✅ Sim                          | Injeção via `DataTransfer` (o arquivo aparece no input como se tivesse sido escolhido). |
+| Firefox   | ❌ Não                          | `input.files` é somente leitura. A extensão tenta um `drop` sintético (funciona em sites com drag-and-drop) e oferece um botão **Baixar arquivo** como fallback. |
+
+## Publicar / distribuir
+
+### Empacotar
+
+```bash
+./scripts/package.sh
+```
+
+Gera em `dist/` os pacotes `direct-attachment-chrome-<versão>.zip`,
+`direct-attachment-firefox-<versão>.zip` e o `update.json` (template de
+auto-atualização do Firefox).
+
+### Distribuição própria (sem loja)
+
+**Firefox** — a distribuição própria é suportada nativamente:
+
+1. Em [addons.mozilla.org](https://addons.mozilla.org), envie o
+   `direct-attachment-firefox-<versão>.zip` como **unlisted** (só para assinatura).
+2. Baixe o `.xpi` assinado que a AMO devolve.
+3. Hospede o `.xpi` (GitHub Releases, Railway, etc.) e edite o `update_link` no
+   `dist/update.json` para apontar para ele.
+4. Sirva o `update.json` em HTTPS; o Firefox usará essa URL para auto-atualizar.
+
+**Chrome** — o Chrome **bloqueia instalação fora da Web Store** (exceto Modo do
+desenvolvedor ou política enterprise). Para distribuição própria:
+
+- Entregue o `.zip` + instruções de "Carregar sem compactação" (dev mode) para
+  usuários de teste; ou
+- Publique como **Unlisted** na Chrome Web Store (link-only, ainda exige conta
+  de desenvolvedor de US$ 5 e revisão).
+
+### Publicação pública (quando validado)
+
+- **Chrome Web Store:** conta de desenvolvedor (US$ 5, taxa única) → enviar o
+  `.zip` → preencher listagem/privacy → justificar `host_permissions: <all_urls>`
+  e o uso do serviço externo (backend) → submeter para revisão.
+- **Firefox AMO:** conta gratuita → enviar o `.zip` como **listado** → revisão.
+
+Em ambos, declare na política de privacidade que nenhum dado pessoal é coletado
+e que a imagem passa transitoriamente pelo seu servidor.
 
 ## Limitações conhecidas
 
 - Sites que abrem o seletor via `input.showPicker()` (em vez de `.click()`) não
   disparam um evento `click`, portanto não são interceptados.
+- No Firefox, o arquivo não é anexado automaticamente ao input (limitação da
+  plataforma); usa drop sintético + download como fallback.
 - A câmera do celular exige contexto seguro (HTTPS). O Railway já fornece HTTPS;
   em desenvolvimento local use `localhost`.
 
@@ -111,8 +182,11 @@ server/
   web/                       # página do celular (embed)
 extension/
   manifest.json
-  content/                   # content scripts (config, interceptor, overlay,
-                             #   transfer, injector, index)
+  content/                   # content scripts (browser, config, interceptor,
+                             #   overlay, transfer, injector, index)
   overlay.css
+  icons/                     # 48/96/128 px
   lib/qrcode.min.js          # biblioteca de QR (vendored)
+scripts/
+  package.sh                 # gera os pacotes de distribuição
 ```

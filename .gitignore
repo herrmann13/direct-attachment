@@ -1,9 +1,10 @@
-# Go build artifacts
+# Build artifacts
 server/server
 *.exe
 *.test
 *.out
 server/vendor/
+dist/
 
 # OS / editor
 .DS_Store

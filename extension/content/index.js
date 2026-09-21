@@ -47,13 +47,23 @@
             session.token,
             (meta, bytes) => {
               const target = currentInput;
+
               if (target) {
                 try {
-                  DirectAttachment.injector.inject(target, bytes, meta);
+                  const result = DirectAttachment.injector.deliver(target, bytes, meta);
+                  DirectAttachment.transfer.cancel();
+
+                  if (result.mode === "firefox") {
+                    // Firefox can't auto-attach; keep the overlay open so the
+                    // user can download the file or close it.
+                    DirectAttachment.overlay.renderReceived(result.file);
+                    return;
+                  }
                 } catch (err) {
-                  // Ignore injection errors; the page remains untouched.
+                  // Injection failed; fall through to a clean close.
                 }
               }
+
               DirectAttachment.transfer.cancel();
               DirectAttachment.overlay.close();
               reset();

@@ -9,11 +9,23 @@
 
   function loadCSS() {
     if (!cssPromise) {
-      cssPromise = fetch(chrome.runtime.getURL("overlay.css"))
+      cssPromise = fetch(DirectAttachment.browser.api.runtime.getURL("overlay.css"))
         .then((res) => (res.ok ? res.text() : ""))
         .catch(() => "");
     }
     return cssPromise;
+  }
+
+  function escapeHTML(value) {
+    const div = document.createElement("div");
+    div.textContent = value;
+    return div.innerHTML;
+  }
+
+  function formatSize(bytes) {
+    if (bytes < 1024) return bytes + " B";
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
+    return (bytes / (1024 * 1024)).toFixed(1) + " MB";
   }
 
   class Overlay {
@@ -94,6 +106,35 @@
       if (!this.statusEl) return;
       this.statusEl.textContent = message || "";
       this.statusEl.className = "da-status" + (kind ? " da-" + kind : "");
+    }
+
+    // Firefox-only result state: shows a download button because the file
+    // cannot be injected automatically.
+    renderReceived(file) {
+      if (!this.shadow) return;
+
+      const card = this.shadow.querySelector(".da-card");
+      if (!card) return;
+
+      card.innerHTML = `
+        <h2>Foto recebida</h2>
+        <p class="da-sub">${escapeHTML(file.name)} (${formatSize(file.size)})</p>
+        <p class="da-status">
+          O Firefox não permite anexar automaticamente ao campo da página.
+          Baixe o arquivo abaixo e selecione-o manualmente.
+        </p>
+        <div class="da-actions">
+          <button class="da-btn da-btn-primary" id="da-download" type="button">Baixar arquivo</button>
+          <button class="da-btn" id="da-close" type="button">Fechar</button>
+        </div>
+      `;
+
+      card.querySelector("#da-download").addEventListener("click", () => {
+        DirectAttachment.browser.downloadBlob(file, file.name);
+      });
+      card.querySelector("#da-close").addEventListener("click", () => {
+        if (this.onCancel) this.onCancel();
+      });
     }
 
     close() {

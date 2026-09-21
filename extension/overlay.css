@@ -77,3 +77,13 @@
 .da-btn:hover {
   background: #f1f5f9;
 }
+
+.da-btn-primary {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #ffffff;
+}
+
+.da-btn-primary:hover {
+  background: #1d4ed8;
+}
