@@ -68,6 +68,12 @@ func (s *Server) handleTransferWS(w http.ResponseWriter, r *http.Request) {
 	go s.hub.HandleConn(r.Context(), id, conn, s.log)
 }
 
+// cryptoOverhead is the extra bytes added on top of the plaintext by the
+// end-to-end encryption (24-byte nonce + 16-byte Poly1305 tag). The phone
+// validates the plaintext against MaxFileSize, so the ciphertext accepted here
+// must tolerate this overhead.
+const cryptoOverhead = 40
+
 // handleUpload receives the image from the phone and relays it to the PC.
 func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
@@ -103,7 +109,7 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 		httpx.WriteError(w, httpx.BadRequest("bad_request", "failed to read file"))
 		return
 	}
-	if int64(len(data)) > s.cfg.MaxFileSize {
+	if int64(len(data)) > s.cfg.MaxFileSize+cryptoOverhead {
 		httpx.WriteError(w, httpx.RequestEntityTooLarge("file_too_large", "file exceeds maximum allowed size"))
 		return
 	}
@@ -112,12 +118,16 @@ func (s *Server) handleUpload(w http.ResponseWriter, r *http.Request) {
 	if v := r.FormValue("name"); v != "" {
 		name = v
 	}
-
-	up, err := upload.ValidateImage(name, data)
-	if err != nil {
-		httpx.WriteError(w, err)
-		return
+	contentType := r.FormValue("contentType")
+	if contentType == "" {
+		contentType = "application/octet-stream"
 	}
+
+	// The payload is end-to-end encrypted, so the server treats it as opaque
+	// bytes and does not inspect or validate its contents. Only the file name
+	// is normalized; type enforcement happens on the phone (before encrypting)
+	// and on the PC (after decrypting).
+	up := upload.Prepare(name, contentType, int64(len(data)))
 
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()

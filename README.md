@@ -28,7 +28,9 @@ Site (PC)  ──clique interceptado──▶  Extensão (content script)
   celular e faz o *relay* do arquivo via WebSocket.
 - **`extension/`** — Extensão WebExtension MV3 (Chrome e Firefox). Intercepta o
   clique, mostra o QR e injeta o arquivo recebido no input original.
-- A foto **passa pelo servidor** (relay), o que é simples e confiável.
+- A foto é **cifrada de ponta a ponta** (TweetNaCl/XSalsa20-Poly1305): o servidor
+  só repassa texto cifrado e **nunca consegue ver a imagem**. A chave viaja
+  apenas no fragmento do QR Code (`#k=...`), que o navegador não envia ao servidor.
 
 ## Backend (Go)
 
@@ -157,7 +159,18 @@ desenvolvedor ou política enterprise). Para distribuição própria:
 - **Firefox AMO:** conta gratuita → enviar o `.zip` como **listado** → revisão.
 
 Em ambos, declare na política de privacidade que nenhum dado pessoal é coletado
-e que a imagem passa transitoriamente pelo seu servidor.
+e que a imagem é **cifrada de ponta a ponta**: apenas o texto cifrado transita
+pelo servidor, que não tem acesso ao conteúdo da foto.
+
+## Privacidade e criptografia
+
+- A foto é cifrada no celular com **TweetNaCl** (`nacl.secretbox`,
+  XSalsa20-Poly1305) usando uma chave efêmera de 256 bits gerada no PC.
+- A chave viaja somente no fragmento do QR Code (`#k=...`); fragmentos não são
+  enviados ao servidor em requisições HTTP, então o servidor nunca conhece a chave.
+- O servidor repassa apenas os bytes cifrados (opacos) e não os inspeciona nem
+  armazena; a sessão é apagada logo após a entrega.
+- Validação de tipo/tamanho: no celular (antes de cifrar) e no PC (após decifrar).
 
 ## Limitações conhecidas
 
@@ -176,17 +189,18 @@ server/
   internal/config/           # env vars
   internal/session/          # domínio + store em memória
   internal/httpx/            # respostas/erros JSON padronizados
-  internal/upload/           # validação de tipo/tamanho
-  internal/transfer/         # hub WebSocket (relay)
+  internal/upload/           # metadados do arquivo (nome), sem sniff
+  internal/transfer/         # hub WebSocket (relay de bytes opacos)
   internal/api/              # rotas, handlers e middleware
-  web/                       # página do celular (embed)
+  web/                       # página do celular (embed) + tweetnacl
 extension/
   manifest.json
-  content/                   # content scripts (browser, config, interceptor,
-                             #   overlay, transfer, injector, index)
+  content/                   # content scripts (browser, crypto, config,
+                             #   interceptor, overlay, transfer, injector, index)
   overlay.css
   icons/                     # 48/96/128 px
   lib/qrcode.min.js          # biblioteca de QR (vendored)
+  lib/tweetnacl.min.js       # criptografia E2E (vendored)
 scripts/
   package.sh                 # gera os pacotes de distribuição
 ```

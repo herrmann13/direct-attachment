@@ -20,7 +20,9 @@
       "matches": ["<all_urls>"],
       "js": [
         "lib/qrcode.min.js",
+        "lib/tweetnacl.min.js",
         "content/browser.js",
+        "content/crypto.js",
         "content/config.js",
         "content/interceptor.js",
         "content/overlay.js",

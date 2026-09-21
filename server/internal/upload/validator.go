@@ -1,53 +1,38 @@
-// Package upload validates uploaded images before they are relayed to the PC.
-// It never trusts the client-declared MIME type; the real type is detected by
-// sniffing the file signature.
+// Package upload prepares the opaque (end-to-end encrypted) payload before it
+// is relayed to the PC. Because the file is encrypted, the server must not
+// inspect its contents; this package only normalizes the file name and carries
+// the client-declared metadata.
 package upload
 
 import (
 	"path/filepath"
 	"strings"
-
-	"github.com/direct-attachment-plugin/server/internal/httpx"
 )
 
-// allowedTypes maps a detected content type to its canonical file extension.
-var allowedTypes = map[string]string{
-	"image/jpeg": ".jpg",
-	"image/png":  ".png",
-	"image/webp": ".webp",
-}
-
-// File is a validated image ready to be relayed.
+// File is the metadata the server relays alongside the encrypted bytes.
 type File struct {
 	Name        string
 	ContentType string
 	Size        int64
 }
 
-// ValidateImage detects the real content type of data, enforces the image
-// allowlist, and normalizes the destination file name.
-func ValidateImage(name string, data []byte) (File, error) {
-	if len(data) == 0 {
-		return File{}, httpx.BadRequest("bad_request", "empty file")
-	}
-
-	contentType := detectContentType(data)
-	ext, ok := allowedTypes[contentType]
-	if !ok {
-		return File{}, httpx.UnsupportedMediaType("unsupported_type", "only JPEG, PNG and WebP images are allowed")
-	}
-
+// Prepare normalizes the destination file name and returns the relay metadata.
+// It performs no content inspection; type/size enforcement happens on the
+// phone (before encryption) and on the PC (after decryption).
+func Prepare(name, contentType string, size int64) File {
 	return File{
-		Name:        normalizeName(name, ext),
+		Name:        normalizeName(name, contentType),
 		ContentType: contentType,
-		Size:        int64(len(data)),
-	}, nil
+		Size:        size,
+	}
 }
 
-// normalizeName strips any directory components and guarantees a sensible
-// extension, falling back to "photo" when the client sends nothing usable.
-func normalizeName(name, ext string) string {
+// normalizeName strips directory components and guarantees a sensible
+// extension based on the declared content type, falling back to "photo".
+func normalizeName(name, contentType string) string {
 	name = filepath.Base(strings.TrimSpace(name))
+	ext := extensionFor(contentType)
+
 	if name == "" || name == "." || name == "/" || name == "\\" {
 		return "photo" + ext
 	}
@@ -55,4 +40,19 @@ func normalizeName(name, ext string) string {
 		name += ext
 	}
 	return name
+}
+
+// extensionFor maps a content type to a canonical extension, with a safe
+// default for unknown/opaque types.
+func extensionFor(contentType string) string {
+	switch contentType {
+	case "image/jpeg":
+		return ".jpg"
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	default:
+		return ".bin"
+	}
 }

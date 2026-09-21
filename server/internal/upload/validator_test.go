@@ -1,80 +1,44 @@
 package upload
 
-import (
-	"encoding/base64"
-	"errors"
-	"testing"
+import "testing"
 
-	"github.com/direct-attachment-plugin/server/internal/httpx"
-)
-
-// transparentPNG is a valid 1x1 PNG image.
-const transparentPNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-
-func mustDecode(t *testing.T, b64 string) []byte {
-	t.Helper()
-	b, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		t.Fatalf("base64 decode: %v", err)
-	}
-	return b
-}
-
-func TestValidateImagePNG(t *testing.T) {
-	data := mustDecode(t, transparentPNG)
-	f, err := ValidateImage("foto.png", data)
-	if err != nil {
-		t.Fatalf("ValidateImage() error = %v", err)
+func TestPrepareKeepsExistingExtension(t *testing.T) {
+	f := Prepare("foto.png", "image/png", 1234)
+	if f.Name != "foto.png" {
+		t.Errorf("Name = %q, want foto.png", f.Name)
 	}
 	if f.ContentType != "image/png" {
 		t.Errorf("ContentType = %q, want image/png", f.ContentType)
 	}
-	if f.Name != "foto.png" {
-		t.Errorf("Name = %q, want foto.png", f.Name)
-	}
-	if f.Size != int64(len(data)) {
-		t.Errorf("Size = %d, want %d", f.Size, len(data))
+	if f.Size != 1234 {
+		t.Errorf("Size = %d, want 1234", f.Size)
 	}
 }
 
-func TestValidateImageAddsExtension(t *testing.T) {
-	data := mustDecode(t, transparentPNG)
-	f, err := ValidateImage("foto", data)
-	if err != nil {
-		t.Fatalf("ValidateImage() error = %v", err)
-	}
-	if f.Name != "foto.png" {
-		t.Errorf("Name = %q, want foto.png", f.Name)
+func TestPrepareAddsExtension(t *testing.T) {
+	f := Prepare("foto", "image/jpeg", 10)
+	if f.Name != "foto.jpg" {
+		t.Errorf("Name = %q, want foto.jpg", f.Name)
 	}
 }
 
-func TestValidateImageEmptyName(t *testing.T) {
-	data := mustDecode(t, transparentPNG)
-	f, err := ValidateImage("", data)
-	if err != nil {
-		t.Fatalf("ValidateImage() error = %v", err)
-	}
-	if f.Name != "photo.png" {
-		t.Errorf("Name = %q, want photo.png", f.Name)
+func TestPrepareEmptyName(t *testing.T) {
+	f := Prepare("", "image/webp", 10)
+	if f.Name != "photo.webp" {
+		t.Errorf("Name = %q, want photo.webp", f.Name)
 	}
 }
 
-func TestValidateImageRejectsNonImage(t *testing.T) {
-	if _, err := ValidateImage("note.txt", []byte("hello, this is text")); err == nil {
-		t.Fatal("expected error for non-image data")
-	} else {
-		var apiErr *httpx.Error
-		if !errors.As(err, &apiErr) {
-			t.Fatalf("error type = %T, want *httpx.Error", err)
-		}
-		if apiErr.Code != "unsupported_type" {
-			t.Errorf("code = %q, want unsupported_type", apiErr.Code)
-		}
+func TestPrepareUnknownType(t *testing.T) {
+	f := Prepare("data", "application/octet-stream", 10)
+	if f.Name != "data.bin" {
+		t.Errorf("Name = %q, want data.bin", f.Name)
 	}
 }
 
-func TestValidateImageRejectsEmpty(t *testing.T) {
-	if _, err := ValidateImage("x.png", []byte{}); err == nil {
-		t.Fatal("expected error for empty data")
+func TestPrepareStripsPath(t *testing.T) {
+	f := Prepare("/tmp/../../evil.png", "image/png", 10)
+	if f.Name != "evil.png" {
+		t.Errorf("Name = %q, want evil.png", f.Name)
 	}
 }

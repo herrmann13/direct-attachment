@@ -4,7 +4,7 @@ package web
 
 import "embed"
 
-// FS contains index.html, style.css and app.js.
+// FS contains the static assets of the mobile capture page.
 //
-//go:embed index.html style.css app.js
+//go:embed index.html style.css app.js tweetnacl.min.js
 var FS embed.FS

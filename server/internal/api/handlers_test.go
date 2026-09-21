@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"encoding/base64"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -19,18 +18,6 @@ import (
 	"github.com/direct-attachment-plugin/server/internal/transfer"
 	"github.com/gorilla/websocket"
 )
-
-// transparentPNG is a valid 1x1 PNG image.
-const transparentPNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=="
-
-func mustDecode(t *testing.T, b64 string) []byte {
-	t.Helper()
-	b, err := base64.StdEncoding.DecodeString(b64)
-	if err != nil {
-		t.Fatalf("base64 decode: %v", err)
-	}
-	return b
-}
 
 func newTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
@@ -93,11 +80,16 @@ func dialWS(t *testing.T, ts *httptest.Server, id, token string) *websocket.Conn
 	return conn
 }
 
-func uploadFile(t *testing.T, ts *httptest.Server, id, token, name string, data []byte) *http.Response {
+func uploadFile(t *testing.T, ts *httptest.Server, id, token, name, contentType string, data []byte) *http.Response {
 	t.Helper()
 
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
+
+	if err := mw.WriteField("contentType", contentType); err != nil {
+		t.Fatalf("write contentType: %v", err)
+	}
+
 	fw, err := mw.CreateFormFile("file", name)
 	if err != nil {
 		t.Fatalf("create form file: %v", err)
@@ -120,20 +112,10 @@ func uploadFile(t *testing.T, ts *httptest.Server, id, token, name string, data 
 	return res
 }
 
-func TestUploadHappyPath(t *testing.T) {
-	ts := newTestServer(t)
-	id, token := createSession(t, ts)
-	conn := dialWS(t, ts, id, token)
-
-	data := mustDecode(t, transparentPNG)
-	res := uploadFile(t, ts, id, token, "foto.png", data)
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusOK {
-		t.Fatalf("upload status = %d, want 200", res.StatusCode)
-	}
-
-	// 1) metadata frame.
-	_, metaRaw, err := conn.ReadMessage()
+// readMeta reads the metadata frame and returns the parsed fields.
+func readMeta(t *testing.T, conn *websocket.Conn) (name, contentType string) {
+	t.Helper()
+	_, raw, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("read meta: %v", err)
 	}
@@ -143,14 +125,34 @@ func TestUploadHappyPath(t *testing.T) {
 		ContentType string `json:"contentType"`
 		Size        int64  `json:"size"`
 	}
-	if err := json.Unmarshal(metaRaw, &meta); err != nil {
+	if err := json.Unmarshal(raw, &meta); err != nil {
 		t.Fatalf("unmarshal meta: %v", err)
 	}
-	if meta.Type != "meta" || meta.Name != "foto.png" || meta.ContentType != "image/png" {
-		t.Fatalf("unexpected meta: %+v", meta)
+	if meta.Type != "meta" {
+		t.Fatalf("meta type = %q, want meta", meta.Type)
+	}
+	return meta.Name, meta.ContentType
+}
+
+func TestUploadRelaysOpaqueBytes(t *testing.T) {
+	ts := newTestServer(t)
+	id, token := createSession(t, ts)
+	conn := dialWS(t, ts, id, token)
+
+	// The payload is encrypted on the client; the server must relay it
+	// byte-for-byte without inspecting its contents.
+	data := []byte("opaque-encrypted-bytes-that-are-not-an-image")
+	res := uploadFile(t, ts, id, token, "foto.png", "image/png", data)
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("upload status = %d, want 200", res.StatusCode)
 	}
 
-	// 2) binary frame with the exact file bytes.
+	name, contentType := readMeta(t, conn)
+	if name != "foto.png" || contentType != "image/png" {
+		t.Fatalf("unexpected meta: name=%q contentType=%q", name, contentType)
+	}
+
 	mt, payload, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("read binary: %v", err)
@@ -162,7 +164,6 @@ func TestUploadHappyPath(t *testing.T) {
 		t.Fatal("payload mismatch")
 	}
 
-	// 3) done frame.
 	_, doneRaw, err := conn.ReadMessage()
 	if err != nil {
 		t.Fatalf("read done: %v", err)
@@ -172,11 +173,28 @@ func TestUploadHappyPath(t *testing.T) {
 	}
 }
 
+func TestUploadAddsExtension(t *testing.T) {
+	ts := newTestServer(t)
+	id, token := createSession(t, ts)
+	conn := dialWS(t, ts, id, token)
+
+	res := uploadFile(t, ts, id, token, "foto", "image/jpeg", []byte("x"))
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("upload status = %d, want 200", res.StatusCode)
+	}
+
+	name, _ := readMeta(t, conn)
+	if name != "foto.jpg" {
+		t.Fatalf("name = %q, want foto.jpg", name)
+	}
+}
+
 func TestUploadInvalidToken(t *testing.T) {
 	ts := newTestServer(t)
 	id, _ := createSession(t, ts)
 
-	res := uploadFile(t, ts, id, "wrong-token", "foto.png", mustDecode(t, transparentPNG))
+	res := uploadFile(t, ts, id, "wrong-token", "foto.png", "image/png", []byte("x"))
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("status = %d, want 401", res.StatusCode)
@@ -188,22 +206,10 @@ func TestUploadNoReceiver(t *testing.T) {
 	id, token := createSession(t, ts)
 
 	// No WebSocket connected, so delivery must fail with 410.
-	res := uploadFile(t, ts, id, token, "foto.png", mustDecode(t, transparentPNG))
+	res := uploadFile(t, ts, id, token, "foto.png", "image/png", []byte("x"))
 	defer res.Body.Close()
 	if res.StatusCode != http.StatusGone {
 		t.Fatalf("status = %d, want 410", res.StatusCode)
-	}
-}
-
-func TestUploadUnsupportedType(t *testing.T) {
-	ts := newTestServer(t)
-	id, token := createSession(t, ts)
-	_ = dialWS(t, ts, id, token)
-
-	res := uploadFile(t, ts, id, token, "note.txt", []byte("plain text, not an image"))
-	defer res.Body.Close()
-	if res.StatusCode != http.StatusUnsupportedMediaType {
-		t.Fatalf("status = %d, want 415", res.StatusCode)
 	}
 }
 
@@ -222,7 +228,7 @@ func TestCancelSession(t *testing.T) {
 	}
 
 	// Uploading after cancellation must be rejected.
-	up := uploadFile(t, ts, id, token, "foto.png", mustDecode(t, transparentPNG))
+	up := uploadFile(t, ts, id, token, "foto.png", "image/png", []byte("x"))
 	defer up.Body.Close()
 	if up.StatusCode != http.StatusUnauthorized && up.StatusCode != http.StatusNotFound {
 		t.Fatalf("upload after cancel status = %d, want 401/404", up.StatusCode)

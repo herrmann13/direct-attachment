@@ -39,6 +39,7 @@
         if (currentInput !== input) return;
 
         try {
+          const key = DirectAttachment.crypto.generateKey();
           const session = await DirectAttachment.transfer.createSession();
           if (currentInput !== input) return;
 
@@ -46,11 +47,28 @@
             session.sessionId,
             session.token,
             (meta, bytes) => {
+              const plain = DirectAttachment.crypto.decrypt(bytes, key);
+              if (!plain) {
+                DirectAttachment.transfer.cancel();
+                DirectAttachment.overlay.setState("Falha ao decifrar a foto.", "error");
+                return;
+              }
+
               const target = currentInput;
 
               if (target) {
                 try {
-                  const result = DirectAttachment.injector.deliver(target, bytes, meta);
+                  const result = DirectAttachment.injector.deliver(target, plain, meta);
+
+                  if (result.mode === "invalid") {
+                    DirectAttachment.transfer.cancel();
+                    DirectAttachment.overlay.setState(
+                      "O arquivo recebido não é uma imagem válida.",
+                      "error",
+                    );
+                    return;
+                  }
+
                   DirectAttachment.transfer.cancel();
 
                   if (result.mode === "firefox") {
@@ -73,7 +91,10 @@
             },
           );
 
-          DirectAttachment.overlay.setQR(session.url);
+          // The key travels only in the URL fragment, which browsers never
+          // send to the server.
+          const qrUrl = session.url + "#k=" + DirectAttachment.crypto.keyToB64(key);
+          DirectAttachment.overlay.setQR(qrUrl);
         } catch (_) {
           DirectAttachment.overlay.setState("Não foi possível criar a sessão.", "error");
         }
