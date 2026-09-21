@@ -10,6 +10,23 @@ import (
 	"github.com/direct-attachment-plugin/server/internal/httpx"
 )
 
+// withCORS allows the extension's content scripts (running on arbitrary pages)
+// to call this API cross-origin. In MV3, content scripts are subject to CORS in
+// both Chrome and Firefox, so the server must opt in explicitly.
+func (s *Server) withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+
+		if r.Method == http.MethodOptions {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
 // withRecovery converts a panic in a handler into a 500 response instead of
 // crashing the process. It intentionally keeps the message generic.
 func (s *Server) withRecovery(next http.Handler) http.Handler {

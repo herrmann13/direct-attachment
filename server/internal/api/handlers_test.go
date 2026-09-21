@@ -213,6 +213,36 @@ func TestUploadNoReceiver(t *testing.T) {
 	}
 }
 
+func TestCORS(t *testing.T) {
+	ts := newTestServer(t)
+
+	// Simple cross-origin request must carry the CORS allow header.
+	res, err := http.Post(ts.URL+"/api/sessions", "application/json", nil)
+	if err != nil {
+		t.Fatalf("POST: %v", err)
+	}
+	res.Body.Close()
+	if got := res.Header.Get("Access-Control-Allow-Origin"); got != "*" {
+		t.Fatalf("Access-Control-Allow-Origin = %q, want *", got)
+	}
+
+	// Preflighted request (DELETE) must be answered with 204 and the method.
+	req, _ := http.NewRequest(http.MethodOptions, ts.URL+"/api/sessions/xyz", nil)
+	req.Header.Set("Origin", "https://example.com")
+	req.Header.Set("Access-Control-Request-Method", "DELETE")
+	pre, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("OPTIONS: %v", err)
+	}
+	pre.Body.Close()
+	if pre.StatusCode != http.StatusNoContent {
+		t.Fatalf("OPTIONS status = %d, want 204", pre.StatusCode)
+	}
+	if got := pre.Header.Get("Access-Control-Allow-Methods"); !strings.Contains(got, "DELETE") {
+		t.Fatalf("Access-Control-Allow-Methods = %q, want to contain DELETE", got)
+	}
+}
+
 func TestCancelSession(t *testing.T) {
 	ts := newTestServer(t)
 	id, token := createSession(t, ts)

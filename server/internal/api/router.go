@@ -44,5 +44,5 @@ func (s *Server) Routes() http.Handler {
 	// Static assets for the mobile page (style.css, app.js).
 	mux.Handle("GET /", http.FileServer(http.FS(s.web)))
 
-	return s.withRecovery(s.withLogging(mux))
+	return s.withCORS(s.withRecovery(s.withLogging(mux)))
 }
