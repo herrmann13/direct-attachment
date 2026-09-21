@@ -9,6 +9,6 @@
   const DirectAttachment = (globalThis.DirectAttachment = globalThis.DirectAttachment || {});
 
   DirectAttachment.config = {
-    backendOrigin: "http://localhost:8080",
+    backendOrigin: "https://direct-attachment-production.up.railway.app",
   };
 })();
