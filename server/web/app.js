@@ -38,9 +38,13 @@
   const fileInput = $("file");
   const sendBtn = $("send");
   const statusEl = $("status");
+  const cropPanel = $("crop-panel");
+  const cropImg = $("crop-img");
 
   let selectedFile = null;
   let stream = null;
+  let cropper = null;
+  let cropSource = null; // Blob|File shown in the cropper
 
   function setStatus(message, kind) {
     statusEl.textContent = message;
@@ -84,7 +88,11 @@
     }
     try {
       stream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: "environment" },
+        video: {
+          facingMode: "environment",
+          width: { ideal: 3840 },
+          height: { ideal: 2160 },
+        },
         audio: false,
       });
       video.srcObject = stream;
@@ -96,7 +104,21 @@
     }
   }
 
-  function capturePhoto() {
+  async function capturePhoto() {
+    // Prefer ImageCapture, which grabs a full-resolution frame from the camera
+    // sensor (bypassing the lower-resolution preview stream).
+    const track = stream && stream.getVideoTracks()[0];
+    if (window.ImageCapture && track) {
+      try {
+        const blob = await new ImageCapture(track).takePhoto();
+        stopCamera();
+        startCrop(blob);
+        return;
+      } catch (_) {
+        // fall through to the canvas path below
+      }
+    }
+
     const canvas = document.createElement("canvas");
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
@@ -107,15 +129,73 @@
           setStatus("Falha ao capturar a foto.", "error");
           return;
         }
-        const file = new File([blob], `photo-${Date.now()}.jpg`, {
-          type: "image/jpeg",
-        });
         stopCamera();
+        startCrop(blob);
+      },
+      "image/jpeg",
+      0.92,
+    );
+  }
+
+  // Opens the crop panel for a Blob|File and initializes Cropper.js.
+  function startCrop(source) {
+    cropSource = source;
+    cropImg.src = URL.createObjectURL(source);
+    actions.classList.add("hidden");
+    cropPanel.classList.remove("hidden");
+
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    cropper = new Cropper(cropImg, {
+      viewMode: 1,
+      autoCropArea: 1,
+      responsive: true,
+      background: false,
+      guides: true,
+    });
+  }
+
+  function destroyCropper() {
+    if (cropper) {
+      cropper.destroy();
+      cropper = null;
+    }
+    if (cropImg.src) URL.revokeObjectURL(cropImg.src);
+    cropImg.removeAttribute("src");
+    cropSource = null;
+    cropPanel.classList.add("hidden");
+  }
+
+  // Renders the current crop box to a JPEG and continues to the preview.
+  function applyCrop() {
+    if (!cropper) return;
+    const canvas = cropper.getCroppedCanvas({ maxWidth: 2560, maxHeight: 2560 });
+    if (!canvas) {
+      skipCrop();
+      return;
+    }
+    canvas.toBlob(
+      (blob) => {
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: "image/jpeg" });
+        destroyCropper();
         showPreview(file);
       },
       "image/jpeg",
-      0.9,
+      0.92,
     );
+  }
+
+  function skipCrop() {
+    const source = cropSource;
+    destroyCropper();
+    if (source) showPreview(source instanceof File ? source : new File([source], `photo-${Date.now()}.jpg`, { type: "image/jpeg" }));
+  }
+
+  function cancelCrop() {
+    destroyCropper();
+    actions.classList.remove("hidden");
   }
 
   function validate(file) {
@@ -224,10 +304,13 @@
   $("cancel-camera").addEventListener("click", stopCamera);
   $("reset").addEventListener("click", reset);
   sendBtn.addEventListener("click", send);
+  $("crop-confirm").addEventListener("click", applyCrop);
+  $("crop-skip").addEventListener("click", skipCrop);
+  $("crop-cancel").addEventListener("click", cancelCrop);
 
   fileInput.addEventListener("change", () => {
     const file = fileInput.files && fileInput.files[0];
-    if (file && validate(file)) showPreview(file);
+    if (file && validate(file)) startCrop(file);
   });
 
   if (!sessionId || !token) {

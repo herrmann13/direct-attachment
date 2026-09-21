@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Anexar pelo celular</title>
+  <link rel="stylesheet" href="/cropper.min.css" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -35,7 +36,19 @@
     <p id="status" class="status" role="status"></p>
   </main>
 
+  <div id="crop-panel" class="crop-panel hidden">
+    <div class="crop-stage">
+      <img id="crop-img" alt="Cortar imagem" />
+    </div>
+    <div class="crop-actions">
+      <button id="crop-confirm" class="primary" type="button">Cortar e usar</button>
+      <button id="crop-skip" class="secondary" type="button">Usar sem cortar</button>
+      <button id="crop-cancel" class="ghost" type="button">Cancelar</button>
+    </div>
+  </div>
+
   <script src="/tweetnacl.min.js"></script>
+  <script src="/cropper.min.js"></script>
   <script src="/app.js"></script>
 </body>
 </html>
