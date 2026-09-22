@@ -5,17 +5,6 @@
 
   const DirectAttachment = globalThis.DirectAttachment;
 
-  let cssPromise = null;
-
-  function loadCSS() {
-    if (!cssPromise) {
-      cssPromise = fetch(DirectAttachment.browser.api.runtime.getURL("overlay.css"))
-        .then((res) => (res.ok ? res.text() : ""))
-        .catch(() => "");
-    }
-    return cssPromise;
-  }
-
   function escapeHTML(value) {
     const div = document.createElement("div");
     div.textContent = value;
@@ -66,7 +55,7 @@
     async open() {
       this.ensure();
 
-      const css = await loadCSS();
+      const css = DirectAttachment.overlayCSS || "";
       this.shadow.innerHTML = `
         <style>${css}</style>
         <div class="da-backdrop">

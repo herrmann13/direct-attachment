@@ -20,17 +20,21 @@ Antes de submeter, abra a URL da política em uma janela anônima. Se o domínio
 
 **Descrição detalhada**
 
-> Direct Attachment permite transferir uma foto do celular para o campo de anexo que você abriu no navegador. Ao clicar em um campo de upload, a extensão mostra um QR Code. Escaneie-o com o celular, tire ou escolha uma foto e confirme o envio.
+> Direct Attachment permite transferir uma foto do celular para o campo de anexo que você abriu no navegador. Primeiro, clique no ícone da extensão para ativá-la somente na aba atual. Depois, ao clicar em um campo de upload, a extensão mostra um QR Code. Escaneie-o com o celular, tire ou escolha uma foto e confirme o envio.
 >
 > A foto é cifrada de ponta a ponta antes de sair do celular. O servidor apenas retransmite bytes cifrados para o navegador que iniciou a sessão e não recebe a chave de decifragem. As sessões são temporárias, de uso único e expiram rapidamente.
 >
 > Use a extensão somente em sites nos quais você deseja anexar uma imagem. Você pode cancelar a transferência ou escolher usar o seletor nativo de arquivos do computador.
 
-## Justificativa da permissão de sites
+## Justificativa das permissões
 
 Informe, no campo de justificativa de permissões:
 
-> A permissão de acesso aos sites é necessária para que o content script identifique interações com campos `<input type="file">` em qualquer site que o usuário escolher. A função principal da extensão é oferecer, nesse campo, a opção de anexar uma foto enviada pelo celular. O código é executado somente para detectar esse clique e inserir no campo o arquivo que o próprio usuário confirmou; ele não lê páginas para criar perfis, não altera conteúdo para publicidade e não acessa histórico de navegação.
+> A extensão não possui acesso permanente a sites. A permissão `activeTab` concede acesso temporário somente à aba ativa depois que o usuário clica explicitamente no ícone da extensão. Esse acesso é necessário para identificar interações com campos `<input type="file">` no site escolhido e inserir o arquivo que o próprio usuário confirmou. O acesso termina quando o usuário navega ou recarrega a página. A extensão não cria perfis, não injeta publicidade e não acessa o histórico de navegação.
+
+Para `scripting`, informe:
+
+> A permissão `scripting` é necessária para injetar, exclusivamente após a ativação explícita do usuário, o código local da extensão na aba atual. Esse código mostra o QR Code quando o usuário seleciona um campo de anexo e entrega a foto solicitada. Nenhum código é baixado ou executado remotamente.
 
 Se o painel separar a justificativa do host externo, informe:
 
@@ -62,4 +66,4 @@ Não marque “nenhum dado é coletado”: o serviço transmite a foto cifrada e
 
 ## Observação sobre o escopo de sites
 
-O manifesto mantém `"<all_urls>"` porque a proposta da extensão é funcionar em qualquer página que possua campo de anexo. Restringir essa permissão a uma lista fixa de domínios impediria o funcionamento em outros sites. A justificativa acima deve ser mantida consistente com a descrição e com a política de privacidade.
+O manifesto não usa `"<all_urls>"`. A extensão recebe acesso temporário ao documento da aba ativa por `activeTab`, após o clique do usuário no ícone. Assim, ela pode funcionar em qualquer site escolhido sem obter acesso automático ou permanente a todos os sites.

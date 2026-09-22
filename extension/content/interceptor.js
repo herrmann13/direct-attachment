@@ -10,6 +10,10 @@
 
   const DirectAttachment = globalThis.DirectAttachment;
 
+  // The service worker may be restarted between toolbar clicks. Keep the
+  // listener idempotent even if it asks to inject the extension again.
+  if (DirectAttachment.interceptor?.isActive) return;
+
   let allowNative = false;
 
   function findFileInput(target) {
@@ -48,6 +52,8 @@
   );
 
   DirectAttachment.interceptor = {
+    isActive: true,
+
     // Re-opens the native file picker for the given input.
     openNative(input) {
       allowNative = true;

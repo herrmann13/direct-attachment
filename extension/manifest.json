@@ -1,9 +1,15 @@
 {
   "manifest_version": 3,
   "name": "Direct Attachment",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Anexe fotos do seu celular a qualquer site usando um QR Code.",
-  "host_permissions": ["<all_urls>"],
+  "permissions": ["activeTab", "scripting"],
+  "action": {
+    "default_title": "Ativar Direct Attachment nesta aba"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
   "icons": {
     "48": "icons/icon-48.png",
     "96": "icons/icon-96.png",
@@ -15,28 +21,5 @@
       "strict_min_version": "109.0"
     }
   },
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": [
-        "lib/qrcode.min.js",
-        "lib/tweetnacl.min.js",
-        "content/browser.js",
-        "content/crypto.js",
-        "content/config.js",
-        "content/interceptor.js",
-        "content/overlay.js",
-        "content/transfer.js",
-        "content/injector.js",
-        "content/index.js"
-      ],
-      "run_at": "document_idle"
-    }
-  ],
-  "web_accessible_resources": [
-    {
-      "resources": ["overlay.css"],
-      "matches": ["<all_urls>"]
-    }
-  ]
+  "minimum_chrome_version": "102"
 }

@@ -107,11 +107,14 @@ permanente na AMO e é usado pelo `update.json`.
 
 ### 4. Usar
 
-1. Em qualquer site, clique no botão de anexar arquivo.
-2. No overlay, escaneie o QR Code com o celular.
+1. Em qualquer site, clique no ícone da extensão para ativá-la na aba atual.
+2. Clique no botão de anexar arquivo e, no overlay, escaneie o QR Code com o celular.
 3. Tire uma foto ou escolha uma da galeria.
 4. O arquivo aparece no input como se tivesse sido selecionado normalmente
    (Chrome) ou é entregue via drop/download (Firefox).
+
+> A ativação vale somente para o documento da aba atual. Ao recarregar ou
+> navegar para outra página, clique no ícone novamente antes de usar um anexo.
 
 ## Suporte a navegadores
 
@@ -154,8 +157,8 @@ desenvolvedor ou política enterprise). Para distribuição própria:
 ### Publicação pública (quando validado)
 
 - **Chrome Web Store:** conta de desenvolvedor (US$ 5, taxa única) → enviar o
-  `.zip` → preencher listagem/privacy → justificar `host_permissions: <all_urls>`
-  e o uso do serviço externo (backend) → submeter para revisão.
+  `.zip` → preencher listagem/privacy → declarar as permissões `activeTab` e
+  `scripting`, além do uso do serviço externo (backend) → submeter para revisão.
 - **Firefox AMO:** conta gratuita → enviar o `.zip` como **listado** → revisão.
 
 Em ambos, descreva com precisão os dados necessários à transferência: a imagem
@@ -168,7 +171,7 @@ envio.
 > cifrada, o nome/tipo do arquivo e identificadores temporários de sessão são
 > transmitidos para executar a transferência. A política pública já está em
 > `https://direct-attachment-production.up.railway.app/privacy.html`; os textos
-> para a ficha, a justificativa de `"<all_urls>"` e a revisão estão em
+> para a ficha, a justificativa de permissões e a revisão estão em
 > [`CHROME_WEB_STORE.md`](CHROME_WEB_STORE.md).
 
 ## Privacidade e criptografia
