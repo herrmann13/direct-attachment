@@ -158,9 +158,18 @@ desenvolvedor ou política enterprise). Para distribuição própria:
   e o uso do serviço externo (backend) → submeter para revisão.
 - **Firefox AMO:** conta gratuita → enviar o `.zip` como **listado** → revisão.
 
-Em ambos, declare na política de privacidade que nenhum dado pessoal é coletado
-e que a imagem é **cifrada de ponta a ponta**: apenas o texto cifrado transita
-pelo servidor, que não tem acesso ao conteúdo da foto.
+Em ambos, descreva com precisão os dados necessários à transferência: a imagem
+é **cifrada de ponta a ponta**, portanto apenas o texto cifrado transita pelo
+servidor, que não tem acesso ao conteúdo da foto. O nome/tipo do arquivo e
+identificadores temporários de sessão também são transmitidos para concluir o
+envio.
+
+> Para a Chrome Web Store, não declare que a extensão não coleta dados: a foto
+> cifrada, o nome/tipo do arquivo e identificadores temporários de sessão são
+> transmitidos para executar a transferência. A política pública já está em
+> `https://direct-attachment-production.up.railway.app/privacy.html`; os textos
+> para a ficha, a justificativa de `"<all_urls>"` e a revisão estão em
+> [`CHROME_WEB_STORE.md`](CHROME_WEB_STORE.md).
 
 ## Privacidade e criptografia
 

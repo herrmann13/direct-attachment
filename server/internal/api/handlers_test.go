@@ -32,15 +32,37 @@ func newTestServer(t *testing.T) *httptest.Server {
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 
 	webFS := fstest.MapFS{
-		"index.html": &fstest.MapFile{Data: []byte("<html></html>")},
-		"style.css":  &fstest.MapFile{Data: []byte("body{}")},
-		"app.js":     &fstest.MapFile{Data: []byte("")},
+		"index.html":   &fstest.MapFile{Data: []byte("<html></html>")},
+		"privacy.html": &fstest.MapFile{Data: []byte("<html>privacy</html>")},
+		"style.css":    &fstest.MapFile{Data: []byte("body{}")},
+		"app.js":       &fstest.MapFile{Data: []byte("")},
 	}
 
 	srv := New(cfg, store, hub, webFS, log)
 	ts := httptest.NewServer(srv.Routes())
 	t.Cleanup(ts.Close)
 	return ts
+}
+
+func TestPrivacyPageIsPublic(t *testing.T) {
+	ts := newTestServer(t)
+
+	res, err := http.Get(ts.URL + "/privacy.html")
+	if err != nil {
+		t.Fatalf("GET /privacy.html: %v", err)
+	}
+	defer res.Body.Close()
+
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("GET /privacy.html status = %d, want 200", res.StatusCode)
+	}
+	body, err := io.ReadAll(res.Body)
+	if err != nil {
+		t.Fatalf("read privacy page: %v", err)
+	}
+	if !strings.Contains(string(body), "privacy") {
+		t.Fatalf("privacy page body = %q, want privacy content", body)
+	}
 }
 
 func createSession(t *testing.T, ts *httptest.Server) (id, token string) {

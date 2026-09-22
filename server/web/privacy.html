@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Política de Privacidade — Direct Attachment</title>
+  <style>
+    :root { color-scheme: light dark; font-family: system-ui, sans-serif; line-height: 1.55; }
+    body { margin: 0; background: #f6f7fb; color: #1d2433; }
+    main { max-width: 760px; margin: 0 auto; padding: 40px 20px 56px; }
+    article { background: #fff; border-radius: 12px; padding: 32px; box-shadow: 0 2px 12px #18203312; }
+    h1 { margin-top: 0; } h2 { margin-top: 30px; font-size: 1.2rem; }
+    a { color: #1659bd; } li { margin: 8px 0; }
+    .updated { color: #596273; }
+    @media (prefers-color-scheme: dark) {
+      body { background: #11151d; color: #edf1f7; }
+      article { background: #1b212c; box-shadow: none; } a { color: #89b8ff; }
+      .updated { color: #b7c0ce; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <article>
+      <h1>Política de Privacidade — Direct Attachment</h1>
+      <p class="updated">Última atualização: 22 de setembro de 2026</p>
+
+      <p>O Direct Attachment permite enviar uma foto do celular para um campo de anexo aberto no navegador do computador por meio de um QR Code. Esta política explica quais dados participam desse fluxo e como são tratados.</p>
+
+      <h2>Dados tratados</h2>
+      <p>Para executar uma transferência iniciada por você, o serviço trata temporariamente:</p>
+      <ul>
+        <li>um identificador de sessão e um token temporários, usados para parear o celular ao navegador;</li>
+        <li>o nome e o tipo declarado do arquivo;</li>
+        <li>os bytes <strong>cifrados</strong> da foto; e</li>
+        <li>dados técnicos de requisição registrados pelo servidor: método HTTP, caminho solicitado, código de resposta e duração. A infraestrutura de hospedagem também pode processar endereço IP e dados técnicos de conexão conforme a própria política dela.</li>
+      </ul>
+
+      <h2>Fotos e criptografia</h2>
+      <p>A foto é cifrada no celular antes do envio usando XSalsa20-Poly1305 (TweetNaCl). A chave é efêmera e segue apenas no fragmento do QR Code, parte da URL que não é enviada ao servidor. O servidor retransmite bytes cifrados para o navegador que iniciou a sessão e não possui a chave para abrir o conteúdo da foto.</p>
+      <p>O arquivo em claro permanece nos seus dispositivos: no celular antes do envio e no navegador do computador após o recebimento. O Direct Attachment não usa as fotos para publicidade, análise comportamental, treinamento de modelos ou venda de dados.</p>
+
+      <h2>Retenção</h2>
+      <p>Cada sessão expira em até dois minutos e é removida após a entrega bem-sucedida ou cancelamento. O arquivo cifrado é mantido apenas durante o processamento e retransmissão; não há armazenamento permanente de fotos, contas de usuário, banco de dados de perfis ou cookies próprios.</p>
+      <p>Os registros técnicos podem ser retidos pelo provedor de hospedagem pelo período necessário para segurança, operação e diagnóstico, de acordo com a configuração e a política desse provedor.</p>
+
+      <h2>Permissões da extensão</h2>
+      <p>A extensão solicita acesso aos sites para identificar cliques em campos <code>&lt;input type="file"&gt;</code> e oferecer o fluxo de envio pelo celular. Ela não lê o conteúdo de páginas para criar perfis, não injeta anúncios e não acessa histórico de navegação.</p>
+
+      <h2>Compartilhamento</h2>
+      <p>Os dados necessários para a transferência são enviados ao servidor de retransmissão. Fora o provedor de hospedagem que opera esse servidor, o Direct Attachment não compartilha dados com anunciantes, corretores de dados ou plataformas de análise.</p>
+
+      <h2>Seus controles</h2>
+      <p>Você pode cancelar uma sessão no overlay da extensão, não enviar uma foto e remover a extensão a qualquer momento em <code>chrome://extensions</code>. Para solicitar esclarecimentos ou reportar um problema de privacidade, abra uma issue no <a href="https://github.com/herrmann13/direct-attachment/issues">repositório do projeto</a>.</p>
+
+      <h2>Alterações nesta política</h2>
+      <p>Esta página será atualizada caso o tratamento de dados mude de forma relevante.</p>
+    </article>
+  </main>
+</body>
+</html>
