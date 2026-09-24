@@ -97,7 +97,9 @@ permanente na AMO e é usado pelo `update.json`.
 
 1. Abra `chrome://extensions`.
 2. Ative o **Modo do desenvolvedor**.
-3. Clique em **Carregar sem compactação** e selecione a pasta `extension/`.
+3. Gere os pacotes com `./scripts/package.sh` e extraia
+   `dist/direct-attachment-chrome-<versão>.zip`.
+4. Clique em **Carregar sem compactação** e selecione a pasta extraída.
 
 **Firefox**
 
@@ -133,9 +135,10 @@ permanente na AMO e é usado pelo `update.json`.
 
 Gera em `dist/` os pacotes `direct-attachment-chrome-<versão>.zip`,
 `direct-attachment-firefox-<versão>.zip` e o `update.json` (template de
-auto-atualização do Firefox). O empacotador ajusta automaticamente o
-background: service worker no Chrome e event page (`background.scripts`) no
-Firefox, conforme a compatibilidade de cada navegador.
+auto-atualização do Firefox). O manifesto-fonte usa `background.scripts` para
+que o pacote Firefox corresponda exatamente à pasta `extension/`. Para o
+Chrome, que exige um service worker em MV3, o empacotador ajusta essa chave
+somente na cópia temporária usada para gerar o pacote Chrome.
 
 ### Distribuição própria (sem loja)
 

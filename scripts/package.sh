@@ -29,17 +29,17 @@ firefox_zip="$DIST/direct-attachment-firefox-$VERSION.zip"
 
 rm -f "$chrome_zip" "$firefox_zip"
 
-# Chrome MV3 requires a service worker, while Firefox MV3 currently requires
-# background.scripts as the compatible event-page fallback. Build the Firefox
-# archive from a temporary copy so the source manifest stays Chrome-friendly.
-( cd "$EXT" && zip -qr "$chrome_zip" . )
+# Firefox MV3 uses background.scripts, so its archive is an unchanged copy of
+# the source directory. Chrome MV3 requires a service worker, so only the
+# Chrome archive is built from a temporary copy with an adjusted manifest.
+( cd "$EXT" && zip -qr "$firefox_zip" . )
 
-firefox_stage="$(mktemp -d)"
-trap 'rm -rf "$firefox_stage"' EXIT
-cp -R "$EXT"/. "$firefox_stage"/
-jq '.background = {scripts: ["background.js"]}' \
-  "$EXT/manifest.json" > "$firefox_stage/manifest.json"
-( cd "$firefox_stage" && zip -qr "$firefox_zip" . )
+chrome_stage="$(mktemp -d)"
+trap 'rm -rf "$chrome_stage"' EXIT
+cp -R "$EXT"/. "$chrome_stage"/
+jq '.background = {service_worker: "background.js"}' \
+  "$EXT/manifest.json" > "$chrome_stage/manifest.json"
+( cd "$chrome_stage" && zip -qr "$chrome_zip" . )
 
 cat > "$DIST/update.json" <<EOF
 {
