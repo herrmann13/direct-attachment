@@ -29,10 +29,17 @@ firefox_zip="$DIST/direct-attachment-firefox-$VERSION.zip"
 
 rm -f "$chrome_zip" "$firefox_zip"
 
-# The same manifest works for both browsers (Chrome ignores the
-# browser_specific_settings key), so both zips have identical content today.
+# Chrome MV3 requires a service worker, while Firefox MV3 currently requires
+# background.scripts as the compatible event-page fallback. Build the Firefox
+# archive from a temporary copy so the source manifest stays Chrome-friendly.
 ( cd "$EXT" && zip -qr "$chrome_zip" . )
-( cd "$EXT" && zip -qr "$firefox_zip" . )
+
+firefox_stage="$(mktemp -d)"
+trap 'rm -rf "$firefox_stage"' EXIT
+cp -R "$EXT"/. "$firefox_stage"/
+jq '.background = {scripts: ["background.js"]}' \
+  "$EXT/manifest.json" > "$firefox_stage/manifest.json"
+( cd "$firefox_stage" && zip -qr "$firefox_zip" . )
 
 cat > "$DIST/update.json" <<EOF
 {

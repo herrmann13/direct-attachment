@@ -133,7 +133,9 @@ permanente na AMO e é usado pelo `update.json`.
 
 Gera em `dist/` os pacotes `direct-attachment-chrome-<versão>.zip`,
 `direct-attachment-firefox-<versão>.zip` e o `update.json` (template de
-auto-atualização do Firefox).
+auto-atualização do Firefox). O empacotador ajusta automaticamente o
+background: service worker no Chrome e event page (`background.scripts`) no
+Firefox, conforme a compatibilidade de cada navegador.
 
 ### Distribuição própria (sem loja)
 
