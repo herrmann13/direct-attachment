@@ -5,12 +5,6 @@
 
   const DirectAttachment = globalThis.DirectAttachment;
 
-  function escapeHTML(value) {
-    const div = document.createElement("div");
-    div.textContent = value;
-    return div.innerHTML;
-  }
-
   function formatSize(bytes) {
     if (bytes < 1024) return bytes + " B";
     if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + " KB";
@@ -56,32 +50,49 @@
       this.ensure();
 
       const css = DirectAttachment.overlayCSS || "";
-      this.shadow.innerHTML = `
-        <style>${css}</style>
-        <div class="da-backdrop">
-          <div class="da-card" role="dialog" aria-label="Anexar pelo celular">
-            <h2>Anexar pelo celular</h2>
-            <p class="da-sub">Escaneie o QR Code para enviar uma foto do celular.</p>
-            <div class="da-qr" id="da-qr"></div>
-            <p class="da-status" id="da-status"></p>
-            <div class="da-actions">
-              <button class="da-btn" id="da-native" type="button">Usar arquivo do PC</button>
-              <button class="da-btn" id="da-cancel" type="button">Cancelar</button>
-            </div>
-          </div>
-        </div>
-      `;
+      const style = document.createElement("style");
+      style.textContent = css;
 
-      this.qrEl = this.shadow.querySelector("#da-qr");
-      this.statusEl = this.shadow.querySelector("#da-status");
+      const backdrop = document.createElement("div");
+      backdrop.className = "da-backdrop";
+      const card = document.createElement("div");
+      card.className = "da-card";
+      card.setAttribute("role", "dialog");
+      card.setAttribute("aria-label", "Anexar pelo celular");
 
-      this.shadow.querySelector("#da-native").addEventListener("click", () => {
+      const title = document.createElement("h2");
+      title.textContent = "Anexar pelo celular";
+      const subtitle = document.createElement("p");
+      subtitle.className = "da-sub";
+      subtitle.textContent = "Escaneie o QR Code para enviar uma foto do celular.";
+      this.qrEl = document.createElement("div");
+      this.qrEl.className = "da-qr";
+      this.statusEl = document.createElement("p");
+      this.statusEl.className = "da-status";
+
+      const actions = document.createElement("div");
+      actions.className = "da-actions";
+      const nativeButton = document.createElement("button");
+      nativeButton.className = "da-btn";
+      nativeButton.type = "button";
+      nativeButton.textContent = "Usar arquivo do PC";
+      const cancelButton = document.createElement("button");
+      cancelButton.className = "da-btn";
+      cancelButton.type = "button";
+      cancelButton.textContent = "Cancelar";
+
+      actions.append(nativeButton, cancelButton);
+      card.append(title, subtitle, this.qrEl, this.statusEl, actions);
+      backdrop.appendChild(card);
+      this.shadow.replaceChildren(style, backdrop);
+
+      nativeButton.addEventListener("click", () => {
         if (this.onNative) this.onNative();
       });
-      this.shadow.querySelector("#da-cancel").addEventListener("click", () => {
+      cancelButton.addEventListener("click", () => {
         if (this.onCancel) this.onCancel();
       });
-      this.shadow.querySelector(".da-backdrop").addEventListener("click", (e) => {
+      backdrop.addEventListener("click", (e) => {
         if (e.target.classList.contains("da-backdrop") && this.onCancel) this.onCancel();
       });
 
@@ -90,7 +101,7 @@
 
     setQR(url) {
       if (!this.qrEl) return;
-      this.qrEl.innerHTML = "";
+      this.qrEl.replaceChildren();
       try {
         new QRCode(this.qrEl, {
           text: url,
@@ -121,30 +132,48 @@
 
       const isFirefox = DirectAttachment.browser.isFirefox;
 
-      card.innerHTML = `
-        <h2>Foto recebida</h2>
-        <p class="da-sub">${formatSize(file.size)}</p>
-        <label class="da-label" for="da-name">Nome do arquivo</label>
-        <input class="da-input" id="da-name" type="text" value="${escapeHTML(file.name)}" />
-        <div class="da-actions">
-          <button class="da-btn ${isFirefox ? "" : "da-btn-primary"}" id="da-attach" type="button">Anexar</button>
-          <button class="da-btn ${isFirefox ? "da-btn-primary" : ""}" id="da-download" type="button">Baixar</button>
-        </div>
-        <button class="da-btn da-btn-ghost da-close-btn" id="da-close" type="button">Fechar</button>
-      `;
+      const title = document.createElement("h2");
+      title.textContent = "Foto recebida";
+      const size = document.createElement("p");
+      size.className = "da-sub";
+      size.textContent = formatSize(file.size);
+      const label = document.createElement("label");
+      label.className = "da-label";
+      label.htmlFor = "da-name";
+      label.textContent = "Nome do arquivo";
+      const nameInput = document.createElement("input");
+      nameInput.className = "da-input";
+      nameInput.id = "da-name";
+      nameInput.type = "text";
+      nameInput.value = file.name;
+      const actions = document.createElement("div");
+      actions.className = "da-actions";
+      const attachButton = document.createElement("button");
+      attachButton.className = "da-btn" + (isFirefox ? "" : " da-btn-primary");
+      attachButton.type = "button";
+      attachButton.textContent = "Anexar";
+      const downloadButton = document.createElement("button");
+      downloadButton.className = "da-btn" + (isFirefox ? " da-btn-primary" : "");
+      downloadButton.type = "button";
+      downloadButton.textContent = "Baixar";
+      const closeButton = document.createElement("button");
+      closeButton.className = "da-btn da-btn-ghost da-close-btn";
+      closeButton.type = "button";
+      closeButton.textContent = "Fechar";
 
-      const nameInput = card.querySelector("#da-name");
+      actions.append(attachButton, downloadButton);
+      card.replaceChildren(title, size, label, nameInput, actions, closeButton);
       const defaultName = file.name;
 
       const finalName = () => sanitizeName(nameInput.value, defaultName);
 
-      card.querySelector("#da-attach").addEventListener("click", () => {
+      attachButton.addEventListener("click", () => {
         if (handlers.onAttach) handlers.onAttach(finalName());
       });
-      card.querySelector("#da-download").addEventListener("click", () => {
+      downloadButton.addEventListener("click", () => {
         if (handlers.onDownload) handlers.onDownload(finalName());
       });
-      card.querySelector("#da-close").addEventListener("click", () => {
+      closeButton.addEventListener("click", () => {
         if (handlers.onClose) handlers.onClose();
       });
 
